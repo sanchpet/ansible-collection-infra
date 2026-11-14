@@ -20,6 +20,8 @@ issues: https://github.com/sanchpet/ansible-collection-infra/issues
 build_ignore:
   - .ansible
   - .github
+  - .gitattributes
+  - .pre-commit-config.yaml
   - .venv
   - .mise.toml
   - mise.toml

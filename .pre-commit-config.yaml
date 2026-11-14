@@ -1,0 +1,27 @@
+# Run `pre-commit install` once after cloning; mise does it on `mise install`.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: detect-private-key
+      - id: mixed-line-ending
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  # Through the repo toolchain, so devsec.hardening resolves (`mise run deps` first).
+  - repo: local
+    hooks:
+      - id: ansible-lint
+        name: ansible-lint
+        entry: uv run ansible-lint
+        language: system
+        pass_filenames: false
+        types_or: [yaml, jinja]
