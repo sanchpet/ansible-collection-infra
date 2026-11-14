@@ -1,0 +1,13 @@
+# Managed by Ansible (private_network role) — do not edit by hand.
+# Matches the SpaceWeb local NIC by MAC (kernel names are unstable) and assigns its
+# private IP. No routes/gateway: the default route stays on the public interface.
+network:
+  version: 2
+  ethernets:
+    private0:
+      match:
+        macaddress: "{{ private_network_mac }}"
+      addresses:
+        - "{{ private_network_ip }}/{{ private_network_prefix }}"
+      dhcp4: false
+      dhcp6: false

@@ -1,0 +1,10 @@
+---
+# Ports this host relays from the management overlay to something only it can reach. Empty by
+# default: a host gets a bridge because its inventory says so, never by accident.
+#
+# Each entry:
+#   name          identifier, used for the unit name
+#   listen_address address on the overlay to bind (never 0.0.0.0 — see tasks/main.yml)
+#   listen_port    port to bind
+#   target         host:port to forward to
+mesh_service_bridge_forwards: []

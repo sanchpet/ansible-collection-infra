@@ -1,0 +1,95 @@
+---
+# Baseline for all hosts. Trivial domain → own tasks (a community role is overkill).
+# Community hook points as this grows: geerlingguy.ntp/swap, etc.
+
+# SpaceWeb Debian images ship with grub-pc left half-configured (its interactive
+# grub-install target is unset). The next apt transaction runs the pending postinst,
+# which fails non-interactively ("You must correct your GRUB install devices") and
+# breaks every apt op. Heal it before touching apt: preseed the boot disk and finish
+# the pending configuration. Guarded on `dpkg --audit`, so it is a no-op on clean hosts.
+- name: Detect half-configured packages
+  ansible.builtin.command: dpkg --audit
+  register: common_dpkg_audit
+  changed_when: false
+  check_mode: false
+
+- name: Preseed grub-pc install device and finish pending dpkg configuration
+  ansible.builtin.shell: |
+    set -euo pipefail
+    root=$(findmnt -no SOURCE /)
+    disk=$(lsblk -no pkname "$root" | head -1)
+    [ -n "$disk" ] || { echo "could not detect the root disk"; exit 1; }
+    echo "grub-pc grub-pc/install_devices multiselect /dev/$disk" | debconf-set-selections
+    DEBIAN_FRONTEND=noninteractive dpkg --configure -a
+  when: common_dpkg_audit.stdout | length > 0
+  changed_when: true
+
+- name: Set the system hostname to the inventory name
+  # Providers hand out their own hostname (SpaceWeb: the billing id, <login>-vps-NN), and
+  # k3s adopts it as the node name. Set it to the inventory name so node names,
+  # shell prompts and logs match our scheme. Idempotent: only acts when it differs. The k3s
+  # node name is immutable once joined, so this must be set BEFORE k3s installs.
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Reconcile the operator SSH keys for the admin user
+  # `ssh_authorized_keys` is the source of truth. Reconcile them on every run so a
+  # rotation (edit the list) reaches live nodes through the baseline run, not only day-0.
+  # exclusive: the admin user's authorized_keys is set to exactly this list.
+  ansible.posix.authorized_key:
+    user: "{{ bootstrap_admin_user }}"
+    state: present
+    exclusive: true
+    key: "{{ ssh_authorized_keys | join('\n') }}"
+  when: ssh_authorized_keys is defined
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Get current timezone
+  ansible.builtin.command: timedatectl show -p Timezone --value
+  register: common_current_tz
+  changed_when: false
+
+- name: Set timezone
+  ansible.builtin.command: "timedatectl set-timezone {{ common_timezone }}"
+  when: common_current_tz.stdout != common_timezone
+  changed_when: true
+
+- name: Ensure the journald drop-in directory exists
+  # Debian ships journald.conf without a .d directory, and `copy` does not create parents — so
+  # without this the next task fails outright. It passes in check mode, which does not look for
+  # the parent, which is how it reached a real run before being caught.
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Cap the systemd journal
+  # A drop-in rather than an edit of journald.conf: the distribution file stays pristine, so a
+  # package upgrade cannot silently revert the cap and the intent is legible in one short file.
+  #
+  # SystemKeepFree is the one that actually protects the node — it makes journald yield space
+  # when the disk is nearly full regardless of how little the journal itself holds. SystemMaxUse
+  # bounds steady-state growth; 256M is ample for logs that are read only when something has
+  # already gone wrong.
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/10-size.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by ansible (role: common). Do not edit on the node.
+      [Journal]
+      SystemMaxUse={{ common_journal_max_use }}
+      SystemKeepFree={{ common_journal_keep_free }}
+  notify: Restart systemd-journald

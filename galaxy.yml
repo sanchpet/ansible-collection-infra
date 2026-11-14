@@ -1,0 +1,31 @@
+---
+namespace: sanchpet
+name: infra
+version: 0.0.0 # x-release-please-version
+readme: README.md
+authors:
+  - Aleksandr Petrov (https://github.com/sanchpet)
+description: Day-0 access, baseline and hardening for Debian nodes.
+license:
+  - MIT
+tags:
+  - infrastructure
+  - hardening
+  - debian
+dependencies:
+  ansible.posix: ">=2.2.0"
+  devsec.hardening: ">=10.6.0,<11.0.0"
+repository: https://github.com/sanchpet/ansible-collection-infra
+issues: https://github.com/sanchpet/ansible-collection-infra/issues
+build_ignore:
+  - .ansible
+  - .github
+  - .venv
+  - .mise.toml
+  - mise.toml
+  - pyproject.toml
+  - uv.lock
+  - CLAUDE.md
+  - release-please-config.json
+  - .release-please-manifest.json
+  - "*.tar.gz"

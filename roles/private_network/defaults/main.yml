@@ -1,0 +1,3 @@
+---
+# SpaceWeb's local network is a /26 (255.255.255.192). Override per host if it differs.
+private_network_prefix: 26
