@@ -1,0 +1,15 @@
+---
+# Attach the SpaceWeb private (local) NIC to the private L2. SpaceWeb assigns the IP
+# but does NOT configure the guest, so we render a netplan drop-in. The interface is
+# matched by MAC — kernel names (ens6/eth1) are unstable across boots/instances, and
+# the MAC is what the API reports (`sweb vps local-ip show`). No default route here:
+# egress stays on the public interface. Trivial domain, so a thin own role: there is no
+# maintained community netplan role worth pulling.
+- name: Render the private-network netplan drop-in
+  ansible.builtin.template:
+    src: 60-private-net.yaml.j2
+    dest: /etc/netplan/60-private-net.yaml
+    owner: root
+    group: root
+    mode: "0600" # netplan warns on world-readable config
+  notify: Apply netplan

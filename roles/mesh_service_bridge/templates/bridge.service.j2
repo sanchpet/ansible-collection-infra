@@ -1,0 +1,25 @@
+## Managed by Ansible (mesh_service_bridge role) — do not edit by hand.
+## Relays {{ bridge.listen_address }}:{{ bridge.listen_port }} on the management overlay to
+## {{ bridge.target }}, which only this host can reach.
+[Unit]
+Description=Mesh service bridge — {{ bridge.name }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+## Bound to the overlay address alone, so nothing is offered on the public interface. The address
+## belongs to a WireGuard link that may come up after this unit, hence the bind retry below rather
+## than a hard failure at boot.
+ExecStart=/usr/bin/socat TCP-LISTEN:{{ bridge.listen_port }},bind={{ bridge.listen_address }},fork,reuseaddr TCP:{{ bridge.target }}
+Restart=always
+RestartSec=10s
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,58 @@
+---
+# Relays a single TCP port from the management overlay to something only this host can reach.
+#
+# The alternative was routing: give the overlay a route into the far network and masquerade at the
+# gateway. That grants every mesh node reachability to a whole home LAN in order to scrape one
+# port, and — more to the point — the far side is a router whose tunnel must not be touched: its
+# cryptokey routing only accepts sources inside its own tunnel subnet, so routing would have meant
+# either editing that peer or masquerading everything. A bridge sidesteps both: the outbound
+# connection originates from this host's own tunnel address, which the far side already accepts,
+# and the overlay gets exactly one port rather than a network.
+#
+# Own role rather than community: a systemd unit around socat is trivial domain.
+
+- name: Ensure socat is present
+  ansible.builtin.apt:
+    name: socat
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+
+- name: Refuse to bind a bridge to a wildcard address
+  # A wildcard here would publish the far side on the public interface. Fail loudly instead of
+  # quietly widening what this host exposes.
+  ansible.builtin.assert:
+    that:
+      - item.listen_address is defined
+      - item.listen_address not in ['0.0.0.0', '::', '*', '']
+    fail_msg: >-
+      mesh_service_bridge '{{ item.name }}' must bind an explicit overlay address,
+      not '{{ item.listen_address | default("<unset>") }}'.
+  loop: "{{ mesh_service_bridge_forwards }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Install bridge units
+  ansible.builtin.template:
+    src: bridge.service.j2
+    dest: "/etc/systemd/system/mesh-bridge-{{ bridge.name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ mesh_service_bridge_forwards }}"
+  loop_control:
+    label: "{{ bridge.name }}"
+    loop_var: bridge
+  become: true
+
+- name: Enable and start bridge units
+  ansible.builtin.systemd_service:
+    name: "mesh-bridge-{{ item.name }}.service"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ mesh_service_bridge_forwards }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: true

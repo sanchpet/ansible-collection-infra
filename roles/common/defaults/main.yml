@@ -1,0 +1,14 @@
+---
+common_timezone: "Etc/UTC"
+common_packages:
+  - curl
+  - ca-certificates
+  - vim
+  - htop
+  - unattended-upgrades
+
+# Journal size ceiling. Unset, systemd falls back to 10% of the filesystem, which on these
+# 15GB nodes is ~1.47GiB — the same order as the eviction reserve, and the servers had already
+# grown to 913-1012MB (measured 2026-09-15) while the disk sat at 71-77% used.
+common_journal_max_use: "256M"
+common_journal_keep_free: "1G"
