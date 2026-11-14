@@ -1,0 +1,21 @@
+[tools]
+python = "3.14"
+uv = "latest"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+[tasks.deps]
+description = "Install Python deps and the collection's dependencies"
+run = [
+  "uv sync",
+  "ansible-galaxy collection install ansible.posix 'devsec.hardening:>=10.6.0,<11.0.0'",
+]
+
+[tasks.lint]
+description = "ansible-lint over the collection"
+run = "ansible-lint"
+
+[tasks.build]
+description = "Build the collection tarball"
+run = "ansible-galaxy collection build --force"
