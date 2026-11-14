@@ -7,8 +7,12 @@
       "include-component-in-tag": false,
       "bump-minor-pre-major": true,
       "extra-files": [
-        { "type": "generic", "path": "galaxy.yml" }
-      ]
+        {
+          "type": "generic",
+          "path": "galaxy.yml"
+        }
+      ],
+      "initial-version": "0.1.0"
     }
   }
 }
